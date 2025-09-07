@@ -1,0 +1,63 @@
+[project]
+name = "sqlmermaid"
+version = "0.1.0"
+description = "SQL-to-mermaid parser"
+authors = [
+    {name = "gatsu420",email = "qqqqqqq@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "sqlglot[rs] (>=27.12.0,<28.0.0)",
+]
+
+[project.scripts]
+sqlmermaid = "cli.cli:main"
+
+[tool.poetry]
+packages = [
+    {include = "parser", from = "app"},
+    {include = "syntax", from = "common"},
+    {include = "cli"}
+]
+
+[tool.poetry.group.dev.dependencies]
+coverage = "^7.10.6"
+pyright = {extras = ["nodejs"], version = "^1.1.405"}
+ruff = "^0.12.12"
+
+[tool.coverage.run]
+source = [
+    "app/parser",
+    "common/syntax"
+]
+command_line = "-m unittest"
+
+[tool.coverage.report]
+skip_empty = true
+
+[tool.pyright]
+typeCheckingMode = "basic"
+
+# disable portion of "basic" rules
+reportOptionalMemberAccess = false
+
+[tool.ruff]
+fix = true
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle
+    "F",    # pyflakes
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+    "I",    # isort
+]
+
+[tool.ruff.format]
+indent-style = "tab"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
