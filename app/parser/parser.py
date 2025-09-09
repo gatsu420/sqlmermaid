@@ -1,8 +1,7 @@
-import logging
-
 from sqlglot import errors as sgerr
 from sqlglot import exp, parse_one
 
+import common.errors.errors as commonerr
 from common.syntax.syntax import MermaidSyntaxImpl
 
 
@@ -10,22 +9,21 @@ class ParserImpl:
 	def __init__(self, query: str, mermaid_syntax: MermaidSyntaxImpl):
 		self.query = query
 		self.mermaid_syntax = mermaid_syntax
-		self.log = logging.getLogger(__name__)
 
 	def get_query_structure(self) -> str:
-		self.mermaid_syntax.start()
+		if self.query == "":
+			raise commonerr.ParserErr("query is not supplied")
 
 		try:
-			tree = parse_one(self.query, dialect="bigquery")
-		except sgerr.ParseError:
-			self.log.error("failed to parse due to query syntax error")
-			return ""
+			tree = parse_one(self.query, dialect="bigquery").find(exp.Select)
+			self.mermaid_syntax.start()
+		except sgerr.ParseError as pe:
+			raise commonerr.ParserErr("query is malformed") from pe
+		# ParseError will only be raised if malformed syntax has at least 3 words,
+		# so error need to be duplicated for shorter one
+		if not tree:
+			raise commonerr.ParserErr("query is malformed")
 
-		if not isinstance(tree, exp.Select):
-			self.log.error("query must have select as main statement")
-			return ""
-
-		tree = tree.find(exp.Select)
 		if "with" in tree.args:
 			ctes = tree.args["with"].args["expressions"]
 

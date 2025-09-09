@@ -1,5 +1,6 @@
 import unittest
 
+import common.errors.errors as commonerr
 from app.parser.parser import ParserImpl
 from common.syntax.syntax import MermaidSyntaxImpl
 
@@ -10,17 +11,17 @@ class TestParserImpl(unittest.TestCase):
 			{
 				"caseName": "no query is inputted",
 				"query": "",
-				"expectedStructure": "",
+				"expectedErr": commonerr.ParserErr,
 			},
 			{
 				"caseName": "query has syntax error",
-				"query": "some nonexistent syntax",
-				"expectedStructure": "",
+				"query": "asdasd",
+				"expectedErr": commonerr.ParserErr,
 			},
 			{
-				"caseName": "query doesn't have select as main statement",
-				"query": "insert into source1 as select 1",
-				"expectedStructure": "",
+				"caseName": "query has longer syntax error",
+				"query": "asdasd asdasd asdasd asdasd asdasd",
+				"expectedErr": commonerr.ParserErr,
 			},
 			{
 				"caseName": "query has CTEs with join inside them and in final select",
@@ -55,6 +56,7 @@ flowchart TD
   qq --> final_select
 ```
 """,
+				"expectedErr": None,
 			},
 			{
 				"caseName": "query has CTEs with join inside them only",
@@ -84,6 +86,7 @@ flowchart TD
   c --> final_select
 ```
 """,
+				"expectedErr": None,
 			},
 			{
 				"caseName": "query doesn't have CTE but still has join",
@@ -100,6 +103,7 @@ flowchart TD
   qq --> final_select
 ```
 """,
+				"expectedErr": None,
 			},
 			{
 				"caseName": "query doesn't have both CTE and join",
@@ -113,15 +117,18 @@ flowchart TD
   c --> final_select
 ```
 """,
+				"expectedErr": None,
 			},
 		]
 
 		for c in cases:
-			mermaid_syntax = MermaidSyntaxImpl("")
-			parser = ParserImpl(c["query"], mermaid_syntax)
-			structure = parser.get_query_structure()
-			self.assertEqual(
-				structure,
-				c["expectedStructure"],
-				'case "{}" is failed'.format(c["caseName"]),
-			)
+			with self.subTest(c["caseName"]):
+				mermaid_syntax = MermaidSyntaxImpl("")
+				parser = ParserImpl(c["query"], mermaid_syntax)
+
+				if not c["expectedErr"]:
+					structure = parser.get_query_structure()
+					self.assertEqual(c["expectedStructure"], structure)
+				else:
+					with self.assertRaises(c["expectedErr"]):
+						parser.get_query_structure()
