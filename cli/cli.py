@@ -4,6 +4,8 @@ import logging
 from app.parser.parser import ParserImpl
 from common.syntax.syntax import MermaidSyntaxImpl
 
+log = logging.getLogger(__name__)
+
 
 def main():
 	argparser = argparse.ArgumentParser()
@@ -17,7 +19,10 @@ def main():
 
 	mermaid_syntax = MermaidSyntaxImpl("")
 	parser = ParserImpl(args.query, mermaid_syntax)
-	print(parser.get_query_structure())
+	try:
+		print(parser.get_query_structure())
+	except Exception as e:
+		log.error(e)
 
 
 if __name__ == "__main__":
