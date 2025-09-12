@@ -25,17 +25,8 @@ class ParserImpl:
 			raise commonerr.ParserErr("query is malformed")
 
 		if "with" in tree.args:
-			ctes = tree.args["with"].args["expressions"]
-
-			for s in ctes:
-				cte_name = s.args["alias"].args["this"].sql()
-				cte_from = s.args["this"].args["from"].args["this"].sql()
-				self.mermaid_syntax.add(cte_from, cte_name)
-
-				if "joins" in s.args["this"].args:
-					for j in s.args["this"].args["joins"]:
-						cte_join = j.args["this"].args["this"].sql()
-						self.mermaid_syntax.add(cte_join, cte_name)
+			for e in tree.args["with"].args["expressions"]:
+				self.get_nested_cte(e)
 
 		if "from" in tree.args:
 			from_symbols = {}
@@ -49,6 +40,19 @@ class ParserImpl:
 
 		self.mermaid_syntax.finish()
 		return self.mermaid_syntax.syntax
+
+	def get_nested_cte(self, root: exp.CTE) -> exp.CTE:
+		source = root.args["this"].args["from"].args["this"].sql()
+		dest = root.args["alias"].sql()
+		self.mermaid_syntax.add(source, dest)
+
+		if "with" not in root.args["this"].args:
+			return root
+
+		for e in root.args["this"].args["with"].args["expressions"]:
+			self.get_nested_cte(e)
+
+		return root
 
 
 	def get_nested_from(self, root: exp.From, symbols: dict, depth: int) -> exp.From:
@@ -78,7 +82,7 @@ class ParserImpl:
 				source = "subquery_{}".format(depth)
 
 			symbols[source] = dest
-			return self.get_nested_from(root.args["this"].args["this"].args["from"], symbols, depth+1)
+			self.get_nested_from(root.args["this"].args["this"].args["from"], symbols, depth+1)
 
 		return root
 
