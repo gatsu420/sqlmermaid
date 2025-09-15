@@ -19,10 +19,10 @@ def main():
 
 	mermaid_syntax = MermaidSyntaxImpl("")
 	parser = ParserImpl(args.query, mermaid_syntax)
-	try:
-		print(parser.get_query_structure())
-	except Exception as e:
-		log.error(e)
+	# try:
+	print(parser.get_query_structure())
+	# except Exception as e:
+	# 	log.error(e)
 
 
 if __name__ == "__main__":
