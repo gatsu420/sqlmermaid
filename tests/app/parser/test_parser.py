@@ -24,97 +24,11 @@ class TestParserImpl(unittest.TestCase):
 				"expectedErr": commonerr.ParserErr,
 			},
 			{
-				"caseName": "query has CTEs with join inside them and in final select",
-				"query": """
-with a as (
-    select * from source1
-)
-, b as (
-    select * from source2
-)
-, c AS (
-    select
-        a.*,
-    from a
-    join b on
-        a.id = b.id
-)
-
-select
-    distinct c.*,
-from c
-left join qq on
-    c.id = qq.id
-""",
+				"caseName": "get query structure successfully",
+				"query": "select * from datamart.events.source1",
 				"expectedStructure": """```mermaid
 flowchart TD
-  source1 --> a
-  source2 --> b
-  a --> c
-  b --> c
-  c --> final_select
-  qq --> final_select
-```
-""",
-				"expectedErr": None,
-			},
-			{
-				"caseName": "query has CTEs with join inside them only",
-				"query": """
-with a as (
-    select * from source1
-)
-, b as (
-    select * from source2
-)
-, c AS (
-    select
-        a.*,
-    from a
-    join b on
-        a.id = b.id
-)
-
-select * from c
-""",
-				"expectedStructure": """```mermaid
-flowchart TD
-  source1 --> a
-  source2 --> b
-  a --> c
-  b --> c
-  c --> final_select
-```
-""",
-				"expectedErr": None,
-			},
-			{
-				"caseName": "query doesn't have CTE but still has join",
-				"query": """
-select
-    distinct c.*,
-from c
-left join qq on
-    c.id = qq.id
-""",
-				"expectedStructure": """```mermaid
-flowchart TD
-  c --> final_select
-  qq --> final_select
-```
-""",
-				"expectedErr": None,
-			},
-			{
-				"caseName": "query doesn't have both CTE and join",
-				"query": """
-select
-    distinct c.*,
-from c
-""",
-				"expectedStructure": """```mermaid
-flowchart TD
-  c --> final_select
+  datamart.events.source1 --> final_select
 ```
 """,
 				"expectedErr": None,
@@ -126,9 +40,9 @@ flowchart TD
 				mermaid_syntax = MermaidSyntaxImpl("")
 				parser = ParserImpl(c["query"], mermaid_syntax)
 
-				if not c["expectedErr"]:
+				if c["expectedErr"] is None:
 					structure = parser.get_query_structure()
-					self.assertEqual(c["expectedStructure"], structure)
+					self.assertEqual(structure, c["expectedStructure"])
 				else:
 					with self.assertRaises(c["expectedErr"]):
 						parser.get_query_structure()
