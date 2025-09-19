@@ -38,44 +38,50 @@ class ParserImpl:
 
 		if "with" in root.args:
 			for e in root.args["with"].args["expressions"]:
-				self.get_nested_cte(e)
+				self.dig_cte(e)
 				self.handle_query(e.args["this"])
 
 		if "from" in root.args:
-			self.get_nested_subquery(root.args["from"].args["this"])
-			self.handle_query(root.args["from"].args["this"].args["this"])
+			query_source = root.args["from"].args["this"]
+			self.dig_query(query_source)
+			self.handle_query(query_source.args["this"])
 
 		if "joins" in root.args:
 			for j in root.args["joins"]:
-				self.get_nested_subquery(j.args["this"])
+				self.dig_query(j.args["this"])
 				self.handle_query(j.args["this"])
 
-	def get_nested_cte(self, root: exp.CTE) -> exp.CTE:
+	def dig_cte(self, root: exp.CTE) -> exp.CTE:
 		if "with" not in root.args["this"].args:
 			return root
 
-		if not isinstance(root.args["this"].args["from"].args["this"], exp.Table):
-			source = root.args["this"].args["from"].args["this"].sql()
+		cte_source = root.args["this"].args["from"].args["this"]
+		if not isinstance(cte_source, exp.Table):
+			source = cte_source.sql()
 			dest = root.args["alias"].sql()
 			self.mermaid_syntax.add(source, dest)
 
 		return root
 
-	def get_nested_subquery(self, root: exp.Subquery | exp.Table) -> exp.Subquery | exp.Table:
-		if root.parent.parent.parent is None:
+	def dig_query(self, root: exp.Subquery | exp.Table) -> exp.Subquery | exp.Table:
+		query_source_ggparent = root.parent.parent.parent
+		if query_source_ggparent is None:
 			dest = "final_select"
 			self.dest_buffer = "final_select"
-		elif root.parent.parent.parent.args["alias"] is not None:
-			dest = root.parent.parent.parent.args["alias"]
-			self.dest_buffer = root.parent.parent.parent.args["alias"]
+		elif query_source_ggparent.args["alias"] is not None:
+			dest = query_source_ggparent.args["alias"]
+			self.dest_buffer = query_source_ggparent.args["alias"]
 
 		if isinstance(root, exp.Table):
 			if root.args["db"] is None:
 				source = root.args["this"].sql()
 			else:
-				source = (root.args["catalog"].sql()
-			  		+ "." + root.args["db"].sql()
-					+ "." + root.args["this"].sql()
+				source = (
+					root.args["catalog"].sql()
+					+ "."
+					+ root.args["db"].sql()
+					+ "."
+					+ root.args["this"].sql()
 				)
 
 			if self.dest_buffer != "":
@@ -86,7 +92,6 @@ class ParserImpl:
 
 		if root.args["alias"] is not None:
 			source = root.args["alias"].sql()
-
 			if self.dest_buffer != "":
 				dest = self.dest_buffer
 
