@@ -24,30 +24,40 @@ class ParserImpl:
 		if not tree:
 			raise commonerr.ParserErr("query is malformed")
 
-		if "with" in tree.args:
-			for e in tree.args["with"].args["expressions"]:
-				self.get_nested_cte(e)
-
-		if "from" in tree.args:
-			self.get_nested_subquery(tree.args["from"].args["this"])
-
-		if "joins" in tree.args:
-			for j in tree.args["joins"]:
-				self.get_nested_subquery(j.args["this"])
+		self.handle_query(tree)
 
 		self.mermaid_syntax.finish()
 		return self.mermaid_syntax.syntax
 
-	def get_nested_cte(self, root: exp.CTE) -> exp.CTE:
-		source = root.args["this"].args["from"].args["this"].sql()
-		dest = root.args["alias"].sql()
-		self.mermaid_syntax.add(source, dest)
+	def handle_query(self, root: exp.Expression | None) -> None:
+		if root is None:
+			return
 
+		if isinstance(root, exp.Subquery):
+			self.handle_query(root.args["this"])
+
+		if "with" in root.args:
+			for e in root.args["with"].args["expressions"]:
+				self.get_nested_cte(e)
+				self.handle_query(e.args["this"])
+
+		if "from" in root.args:
+			self.get_nested_subquery(root.args["from"].args["this"])
+			self.handle_query(root.args["from"].args["this"].args["this"])
+
+		if "joins" in root.args:
+			for j in root.args["joins"]:
+				self.get_nested_subquery(j.args["this"])
+				self.handle_query(j.args["this"])
+
+	def get_nested_cte(self, root: exp.CTE) -> exp.CTE:
 		if "with" not in root.args["this"].args:
 			return root
 
-		for e in root.args["this"].args["with"].args["expressions"]:
-			self.get_nested_cte(e)
+		if not isinstance(root.args["this"].args["from"].args["this"], exp.Table):
+			source = root.args["this"].args["from"].args["this"].sql()
+			dest = root.args["alias"].sql()
+			self.mermaid_syntax.add(source, dest)
 
 		return root
 
@@ -74,60 +84,12 @@ class ParserImpl:
 			self.mermaid_syntax.add(source, dest)
 			return root
 
-		if isinstance(root, exp.Subquery):
-			if root.args["alias"] is not None:
-				source = root.args["alias"].sql()
+		if root.args["alias"] is not None:
+			source = root.args["alias"].sql()
 
-				if self.dest_buffer != "":
-					dest = self.dest_buffer
+			if self.dest_buffer != "":
+				dest = self.dest_buffer
 
-				self.mermaid_syntax.add(source, dest)
-
-			self.get_nested_subquery(root.args["this"].args["from"].args["this"])
-
+			self.mermaid_syntax.add(source, dest)
 
 		return root
-
-	def get_nested_from(self, root: exp.From, symbols: dict, depth: int) -> exp.From:
-		if root.parent.parent is None:
-			dest = "final_select"
-		else:
-			if root.parent.parent.args["alias"] is not None:
-				dest = root.parent.parent.args["alias"].sql()
-			else:
-				dest = "subquery_{}".format(depth-1)
-
-		if isinstance(root.args["this"], exp.Table):
-			if root.args["this"].args["db"] is None:
-				source = root.args["this"].args["this"].sql()
-			else:
-				source = (root.args["this"].args["catalog"].sql()
-					+ "." + root.args["this"].args["db"].sql()
-					+ "." + root.args["this"].args["this"].sql()
-				)
-			symbols[source] = dest
-			return root
-
-		if isinstance(root.args["this"], exp.Subquery):
-			if root.args["this"].args["alias"] is not None:
-				source = root.args["this"].args["alias"].sql()
-			else:
-				source = "subquery_{}".format(depth)
-
-			symbols[source] = dest
-			self.get_nested_from(root.args["this"].args["this"].args["from"], symbols, depth+1)
-
-		return root
-
-
-	def get_named_nested_from(self, symbols: dict) -> dict:
-		for k, v in symbols.items():
-			if "subquery_" in k:
-				if "subquery_" not in v:
-					buf = v
-
-			else:
-				if "subquery_" in v:
-					self.mermaid_syntax.add(k, buf)
-				else:
-					self.mermaid_syntax.add(k, v)
