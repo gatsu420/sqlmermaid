@@ -21,7 +21,7 @@ class ParserImpl:
 			raise commonerr.ParserErr("query is malformed") from pe
 		# ParseError will only be raised if malformed syntax has at least 3 words,
 		# so error need to be duplicated for shorter one
-		if not tree:
+		if tree is None:
 			raise commonerr.ParserErr("query is malformed")
 
 		self.handle_query(tree)
@@ -29,10 +29,7 @@ class ParserImpl:
 		self.mermaid_syntax.finish()
 		return self.mermaid_syntax.syntax
 
-	def handle_query(self, root: exp.Expression | None) -> None:
-		if root is None:
-			return
-
+	def handle_query(self, root: exp.Expression) -> None:
 		if isinstance(root, exp.Subquery):
 			self.handle_query(root.args["this"])
 
@@ -64,7 +61,7 @@ class ParserImpl:
 		return root
 
 	def dig_query(self, root: exp.Subquery | exp.Table) -> exp.Subquery | exp.Table:
-		query_source_ggparent = root.parent.parent.parent
+		query_source_ggparent = root.parent.parent.parent  # pyright: ignore [reportOptionalMemberAccess]
 		if query_source_ggparent is None:
 			dest = "final_select"
 			self.dest_buffer = "final_select"

@@ -39,9 +39,6 @@ skip_empty = true
 [tool.pyright]
 typeCheckingMode = "basic"
 
-# disable portion of "basic" rules
-reportOptionalMemberAccess = false
-
 [tool.ruff]
 fix = true
 
