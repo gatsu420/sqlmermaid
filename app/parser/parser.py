@@ -25,8 +25,8 @@ class ParserImpl:
 			raise commonerr.ParserErr("query is malformed")
 
 		self.handle_query(tree)
-
 		self.mermaid_syntax.finish()
+
 		return self.mermaid_syntax.syntax
 
 	def handle_query(self, root: exp.Expression) -> None:
@@ -35,7 +35,6 @@ class ParserImpl:
 
 		if "with" in root.args:
 			for e in root.args["with"].args["expressions"]:
-				self.dig_cte(e)
 				self.handle_query(e.args["this"])
 
 		if "from" in root.args:
@@ -47,18 +46,6 @@ class ParserImpl:
 			for j in root.args["joins"]:
 				self.dig_query(j.args["this"])
 				self.handle_query(j.args["this"])
-
-	def dig_cte(self, root: exp.CTE) -> exp.CTE:
-		if "with" not in root.args["this"].args:
-			return root
-
-		cte_source = root.args["this"].args["from"].args["this"]
-		if not isinstance(cte_source, exp.Table):
-			source = cte_source.sql()
-			dest = root.args["alias"].sql()
-			self.mermaid_syntax.add(source, dest)
-
-		return root
 
 	def dig_query(self, root: exp.Subquery | exp.Table) -> exp.Subquery | exp.Table:
 		query_source_ggparent = root.parent.parent.parent  # pyright: ignore [reportOptionalMemberAccess]
@@ -83,15 +70,14 @@ class ParserImpl:
 
 			if self.dest_buffer != "":
 				dest = self.dest_buffer
-
 			self.mermaid_syntax.add(source, dest)
+
 			return root
 
 		if root.args["alias"] is not None:
 			source = root.args["alias"].sql()
 			if self.dest_buffer != "":
 				dest = self.dest_buffer
-
 			self.mermaid_syntax.add(source, dest)
 
 		return root
