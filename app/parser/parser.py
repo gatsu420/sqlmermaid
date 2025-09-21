@@ -10,7 +10,7 @@ class ParserImpl:
 		self.query = query
 		self.mermaid_syntax = mermaid_syntax
 
-	def get_query_structure(self) -> str:
+	def get_root(self) -> str:
 		if self.query == "":
 			raise commonerr.ParserErr("query is not supplied")
 
@@ -24,37 +24,34 @@ class ParserImpl:
 		if tree is None:
 			raise commonerr.ParserErr("query is malformed")
 
-		self.handle_query(tree)
+		self.handle_structure(tree)
 		self.mermaid_syntax.finish()
 
 		return self.mermaid_syntax.syntax
 
-	def handle_query(self, root: exp.Expression) -> None:
-		if isinstance(root, exp.Subquery):
-			self.handle_query(root.args["this"])
-
+	def handle_structure(self, root: exp.Expression) -> None:
 		if "with" in root.args:
 			for e in root.args["with"].args["expressions"]:
-				self.handle_query(e.args["this"])
+				self.handle_structure(e.args["this"])
 
 		if "from" in root.args:
-			query_source = root.args["from"].args["this"]
-			self.dig_query(query_source)
-			self.handle_query(query_source.args["this"])
+			source = root.args["from"].args["this"]
+			self.walk_source(source)
+			self.handle_structure(source.args["this"])
 
 		if "joins" in root.args:
 			for j in root.args["joins"]:
-				self.dig_query(j.args["this"])
-				self.handle_query(j.args["this"])
+				self.walk_source(j.args["this"])
+				self.handle_structure(j.args["this"])
 
-	def dig_query(self, root: exp.Subquery | exp.Table) -> exp.Subquery | exp.Table:
-		query_source_ggparent = root.parent.parent.parent  # pyright: ignore [reportOptionalMemberAccess]
-		if query_source_ggparent is None:
+	def walk_source(self, root: exp.Subquery | exp.Table) -> exp.Subquery | exp.Table:
+		source_ggparent = root.parent.parent.parent  # pyright: ignore [reportOptionalMemberAccess]
+		if source_ggparent is None:
 			dest = "final_select"
 			self.dest_buffer = "final_select"
-		elif query_source_ggparent.args["alias"] is not None:
-			dest = query_source_ggparent.args["alias"]
-			self.dest_buffer = query_source_ggparent.args["alias"]
+		elif source_ggparent.args["alias"] is not None:
+			dest = source_ggparent.args["alias"]
+			self.dest_buffer = source_ggparent.args["alias"]
 
 		if isinstance(root, exp.Table):
 			if root.args["db"] is None:
@@ -70,6 +67,7 @@ class ParserImpl:
 
 			if self.dest_buffer != "":
 				dest = self.dest_buffer
+				self.dest_buffer = ""
 			self.mermaid_syntax.add(source, dest)
 
 			return root
@@ -78,6 +76,7 @@ class ParserImpl:
 			source = root.args["alias"].sql()
 			if self.dest_buffer != "":
 				dest = self.dest_buffer
+				self.dest_buffer = ""
 			self.mermaid_syntax.add(source, dest)
 
 		return root

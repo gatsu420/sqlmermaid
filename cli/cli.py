@@ -20,7 +20,7 @@ def main():
 	mermaid_syntax = MermaidSyntaxImpl("")
 	parser = ParserImpl(args.query, mermaid_syntax)
 	try:
-		print(parser.get_query_structure())
+		print(parser.get_root())
 	except Exception as e:
 		log.error(e)
 
