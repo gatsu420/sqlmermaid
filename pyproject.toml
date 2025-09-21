@@ -38,6 +38,7 @@ skip_empty = true
 
 [tool.pyright]
 typeCheckingMode = "basic"
+ignore = ["tests"]
 
 [tool.ruff]
 fix = true
