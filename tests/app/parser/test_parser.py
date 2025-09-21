@@ -1,5 +1,7 @@
 import unittest
-from sqlglot import parse_one, exp
+
+from sqlglot import exp, parse_one
+
 import common.errors.errors as commonerr
 from app.parser.parser import ParserImpl
 from common.syntax.syntax import MermaidSyntaxImpl
@@ -133,7 +135,7 @@ flowchart TD
   datamart.events.daily --> q
   q --> final_select
 ```
-"""
+""",
 			},
 			{
 				"caseName": "select from CTE containing subquery with alias",
@@ -152,7 +154,7 @@ flowchart TD
   datamart.events.daily --> d
   q --> final_select
 ```
-"""
+""",
 			},
 			{
 				"caseName": "select from subquery, with alias, containing CTE",
@@ -165,13 +167,13 @@ select * from (
     select * from q
 ) d
 """,
-			"expectedStructure": """```mermaid
+				"expectedStructure": """```mermaid
 flowchart TD
   d --> final_select
   datamart.events.daily --> q
   q --> d
 ```
-"""
+""",
 			},
 		]
 
